@@ -1,0 +1,512 @@
+---
+title: "Grace Anyango Ooko"
+author: "Grace Anyango Ooko"
+date: "2023-07-20"
+output: html_document
+---
+
+## CEMA Internship Task: Exploratory Data Analysis
+
+In this task, we will conduct exploratory data analysis on the provided data set containing monthly data for children under 5 years, dis aggregated at a county level for the period January 2021 to June 2023.
+
+## Research Question:
+
+1. Are there any significant differences in "Total Dewormed" among different counties?
+
+2.Is there a relationship between "Total Dewormed" and the prevalence of Acute Malnutrition, stunted children in different age groups, diarrhea cases, and underweight children?
+
+3.Is there a correlation between the various health indicators (Acute Malnutrition, stunted children, diarrhea cases, and underweight children)?
+
+
+### Loading data
+```{r}
+# Load the dataset
+kenyan_counties <- read.csv("C:/Users/Use/Downloads/CEMA/cema_internship_task_2023.csv")
+
+# Overview of the dataset
+(head(kenyan_counties, 10))
+```
+
+### Data Understanding
+
+##### Getting the summary statistics
+
+```{r}
+# Summary statistics of numerical variables
+
+# Get the descriptive summary of the dataframe
+df_summary <- summary(kenyan_counties)
+
+# Print the descriptive summary
+print(df_summary)
+
+```
+##### Insights from summary statistics
+
+The Total Dewormed ranges from a minimum of 97 to a maximum of 392,800, with a mean of 11,458.
+
+The number of children with Acute Malnutrition ranges from 1 to 4,123, with a mean of 125.4. There are 355 missing values in this column.
+
+The number of children stunted between 6 to 23 months ranges from 1 to 4,398, with a mean of 280.2. There are 11 missing values in this column.
+
+The number of children stunted between 0 to 6 months ranges from 1 to 7,900, with a mean of 139.8. There are 19 missing values in this column.
+
+The number of children stunted between 24 to 59 months ranges from 1 to 3,169, with a mean of 110.8. There are 14 missing values in this column.
+
+
+##### Getting Shape( rows and columns)
+
+```{r}
+# Get the dimensions (shape) of the dataframe
+df_shape <- dim(kenyan_counties)
+
+# Print the dimensions
+print(df_shape)
+```
+The data has 1410 rows and 11 columns
+
+
+### Data Cleaning
+
+#### Checking for missing values and duplicates
+
+```{r}
+# Check for missing values
+missing_values <- colSums(is.na(kenyan_counties))
+missing_values <- missing_values[missing_values > 0]
+if (length(missing_values) > 0) {
+  message("Missing Values:")
+  print(missing_values)
+} else {
+  message("No missing values found.")
+}
+
+# Check for duplicates
+duplicates <- kenyan_counties[duplicated(kenyan_counties), ]
+if (nrow(duplicates) > 0) {
+  message("Duplicate rows found. Removing duplicates...")
+  kenyan_counties <- distinct(kenyan_counties)
+} else {
+  message("No duplicate rows found.")
+}
+```
+
+### Handling missing values
+```{r}
+# Load required libraries
+library(dplyr)
+
+# Checking the number of missing values for each variable
+missing_counts <- kenyan_counties %>%
+  summarise_all(~ sum(is.na(.)))
+
+print(missing_counts)
+
+# Impute missing values with the mean for each variable
+kenyan_counties <- kenyan_counties %>%
+  mutate(
+    Acute.Malnutrition = if_else(is.na(Acute.Malnutrition), mean(Acute.Malnutrition, na.rm = TRUE), Acute.Malnutrition),
+    stunted.6.23.months = if_else(is.na(stunted.6.23.months), mean(stunted.6.23.months, na.rm = TRUE), stunted.6.23.months),
+    stunted.0..6.months = if_else(is.na(stunted.0..6.months), mean(stunted.0..6.months, na.rm = TRUE), stunted.0..6.months),
+    stunted.24.59.months = if_else(is.na(stunted.24.59.months), mean(stunted.24.59.months, na.rm = TRUE), stunted.24.59.months)
+  )
+
+# Checking the number of missing values after imputation
+imputed_missing_counts <- kenyan_counties %>%
+  summarise_all(~ sum(is.na(.)))
+
+print(imputed_missing_counts)
+
+```
+There are no missing values 
+There are no duplicates as well.
+
+#### Convert 'period' to a date format and extract 'month' and 'year' columns
+```{r}
+# Load required libraries
+library(dplyr)
+library(lubridate)
+
+# Convert 'period' to a date format and extract 'month' and 'year' columns
+kenyan_counties <- kenyan_counties %>%
+  mutate(period = dmy(paste0("01-", period)),  # Convert to date
+         month = month(period, label = TRUE),  # Extract month 
+         year = year(period))                  # Extract year
+
+# Print the updated dataset to verify the changes
+print(head(kenyan_counties, 10))
+
+```
+I separated the month and year columns for easy analysis and checked the top 10 
+
+### Check the data types of the columns in the dataset
+```{r}
+str(kenyan_counties)
+
+```
+There is a small issue in the display format of the month column. It should be an ordered factor, but it appears to be an ordinary factor.
+
+#### Converting month column into ordered factor
+```{r}
+kenyan_counties$month <- factor(kenyan_counties$month, levels = month.abb, ordered = TRUE)
+str(kenyan_counties)
+```
+Now the month column is now OK
+
+### Exploratory Data Analysis
+
+#### Univariate Analysis
+
+1.Total Dewormed
+
+```{r}
+
+library(ggplot2)
+
+# Histogram of 'Total Dewormed'
+ggplot(kenyan_counties, aes(x = Total.Dewormed)) +
+  geom_histogram(fill = "blue", color = "black") +
+  labs(title = "Distribution of Total Dewormed", x = "Total Dewormed", y = "Frequency")
+
+```
+The bars in the plot indicate how many data points fall into each interval (bin)
+
+
+2.Acute malnutrition
+
+```{r}
+# Histogram of 'Acute Malnutrition'
+ggplot(kenyan_counties, aes(x = Acute.Malnutrition)) +
+  geom_histogram(fill = "green", color = "black") +
+  labs(title = "Distribution of Acute Malnutrition", x = "Acute Malnutrition", y = "Frequency")
+```
+
+3. Stunted(6-23 months)
+
+```{r}
+# Histogram of 'stunted.6.23.months'
+ggplot(kenyan_counties, aes(x = stunted.6.23.months)) +
+  geom_histogram(fill = "orange", color = "black") +
+  labs(title = "Distribution of Stunted (6-23 months)", x = "Stunted (6-23 months)", y = "Frequency")
+```
+Between 0 t0 1000 had the highest frequency with it leaning more towards 0.
+
+4. Diarrhoea Cases
+
+```{r}
+# Histogram of 'diarrhoea.cases'
+ggplot(kenyan_counties, aes(x = diarrhoea.cases)) +
+  geom_histogram(fill = "red", color = "black") +
+  labs(title = "Distribution of Diarrhoea Cases", x = "Diarrhoea Cases", y = "Frequency")
+
+```
+The bar gragh shows the distribution of diarrhoea cases.
+
+5. Underweight(0-6 months)
+
+```{r}
+# Histogram of 'Underweight.0..6.months'
+ggplot(kenyan_counties, aes(x = Underweight.0..6.months)) +
+  geom_histogram(fill = "purple", color = "black") +
+  labs(title = "Distribution of Underweight (0-6 months)", x = "Underweight (0-6 months)", y = "Frequency")
+```
+The graph is skewed to the right.
+
+#### Bivariate Analysis
+
+1.Total Dewormed vs. Acute Malnutrition
+
+```{r}
+# Scatter plot: Total Dewormed vs. Acute Malnutrition
+ggplot(kenyan_counties, aes(x = Total.Dewormed, y = Acute.Malnutrition)) +
+  geom_point() +
+  labs(title = "Scatter plot: Total Dewormed vs. Acute Malnutrition", x = "Total Dewormed", y = "Acute Malnutrition")
+```
+There is no clear correlation between Total Dewormed and Acute Malnutrition
+
+2.Total Dewormed by County
+
+```{r}
+# Box plot: Total Dewormed by County
+ggplot(kenyan_counties, aes(x = county, y = Total.Dewormed)) +
+  geom_boxplot(fill = "lightblue") +
+  labs(title = "Box plot: Total Dewormed by County", x = "County", y = "Total Dewormed") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+3.Total Dewormed vs. Stunted 6-23 months
+
+```{r}
+# Scatter plot: Total Dewormed vs. Stunted 6-23 months
+ggplot(kenyan_counties, aes(x = Total.Dewormed, y = stunted.6.23.months)) +
+  geom_point() +
+  labs(title = "Scatter plot: Total Dewormed vs. Stunted 6-23 months", x = "Total Dewormed", y = "Stunted 6-23 months")
+```
+
+4.Underweight 6-23 months by County
+
+```{r}
+ggplot(kenyan_counties, aes(x = county, y = Underweight.6.23.months)) +
+  geom_boxplot(fill = "lightpink") +
+  labs(title = "Box plot: Underweight 6-23 months by County", x = "County", y = "Underweight 6-23 months") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+5.Stunted 6-23 months by Year
+
+```{r}
+ggplot(kenyan_counties, aes(x = factor(year), y = stunted.6.23.months)) +
+  geom_boxplot(fill = "lightyellow") +
+  labs(title = "Box plot: Stunted 6-23 months by Year", x = "Year", y = "Stunted 6-23 months")
+```
+
+6.Stunted 0-6 months vs. Stunted 6-23 months
+
+```{r}
+ggplot(kenyan_counties, aes(x = stunted.0..6.months, y = stunted.6.23.months)) +
+  geom_point() +
+  labs(title = "Scatter plot: Stunted 0-6 months vs. Stunted 6-23 months", x = "Stunted 0-6 months", y = "Stunted 6-23 months")
+```
+This shows a bit of linear relationship.
+
+#### Correlation analysis
+
+```{r}
+# Check the column names of the 'kenyan_counties' dataset
+colnames(kenyan_counties)
+
+```
+
+Drawing the heat map
+
+```{r}
+# Select the variables of interest for correlation analysis
+vars_of_interest <- c("Underweight.6.23.months",  "Acute.Malnutrition","stunted.6.23.months", "year")
+# Subset the data to include only the variables of interest
+subset_data <- kenyan_counties[, vars_of_interest]
+
+# Calculate the correlation matrix
+cor_matrix <- cor(subset_data, use = "pairwise.complete.obs")
+
+# Reshape the correlation matrix for visualization
+library(reshape2)
+cor_matrix_melted <- melt(cor_matrix)
+
+# Plot the heatmap with correlation values inside the boxes
+library(ggplot2)
+
+ggplot(cor_matrix_melted, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "#D9EBF6", mid = "white", high = "#F6D9D9",
+                       midpoint = 0, limits = c(-1, 1)) +
+  geom_text(aes(label = round(value, 2)), size = 4, color = "black") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Correlation Heatmap")
+
+```
+From the heat map we can see that underweight 6.23.months have the highest correlation with stunted.6.23.months.
+The rest have low correlation.
+
+#### Time Series Analysis
+
+```{r}
+# Time series plot of 'Total Dewormed' over time
+ggplot(kenyan_counties, aes(x = month, y = Total.Dewormed)) +
+  geom_line() +
+  labs(title = "Total Dewormed over Time", x = "Month", y = "Total Dewormed")
+```
+The number of dewormed children varies over time, with certain months or years showing higher deworming rates than others.
+The month of May had the highest no of Total Dewormed, followed by June then November.
+
+#### Multivariate Analysis
+
+```{r}
+#multiple linear regression to consider the impact of "Total Dewormed" and "Year" on "Acute Malnutrition
+model <- lm(`Acute.Malnutrition` ~ `Total.Dewormed` + year, data = kenyan_counties)
+summary(model)
+```
+Considering R^2 OF 0.0277 that is a very low correlation.
+
+#### Performing multiple regression analysis
+```{r}
+# Perform multiple linear regression analysis
+model <- lm(Total.Dewormed ~ Acute.Malnutrition + stunted.6.23.months + stunted.0..6.months + 
+              diarrhoea.cases + Underweight.0..6.months + Underweight.6.23.months + 
+              Underweight.24.59.Months, data = kenyan_counties)
+
+# Print the summary of the regression model
+summary(model)
+
+```
+insights
+
+The multiple R-squared value of 0.2201 indicates that approximately 22.01% of the variance in "Total.Dewormed" can be explained by the combination of the predictor variables. 
+The F-statistic (56.54) is statistically significant (p-value < 2.2e-16), indicating that the overall regression model is significant in explaining the variability in "Total.Dewormed." 
+However, it's important to note that not all predictor variables are statistically significant
+
+### Research Questions
+
+1. Are there any significant differences in "Total Dewormed" among different counties?
+
+```{r}
+# One-way ANOVA to test for differences in 'Total Dewormed' among counties
+model <- lm(Total.Dewormed ~ county, data = kenyan_counties)
+anova_results <- anova(model)
+print(anova_results)
+```
+ANOVA table tests the null hypothesis that the mean "Total Dewormed" is the same across all counties. The small p-value (< 2.2e-16) for the "county" category indicates that there are significant differences in "Total Dewormed" among the counties, suggesting that the county variable has a significant impact on the number of dewormed children.
+
+
+2.Is there a relationship between "Total Dewormed" and the prevalence of Acute Malnutrition, stunted children in different age groups, diarrhea cases, and underweight children?
+```{r}
+# Scatter plot matrix to visualize relationships between variables
+library(GGally)
+ggpairs(kenyan_counties[, c("Total.Dewormed", "Acute.Malnutrition", "stunted.6.23.months", "diarrhoea.cases", "Underweight.0..6.months")])
+
+```
+
+3.Is there a correlation between the various health indicators (Acute Malnutrition, stunted children, diarrhea cases, and underweight children)?
+
+```{r}
+# Calculate correlation matrix
+cor_matrix <- cor(kenyan_counties[, c("Total.Dewormed", "Acute.Malnutrition", "stunted.6.23.months", "diarrhoea.cases", "Underweight.0..6.months")], use = "pairwise.complete.obs")
+
+# Load necessary library
+library(ggplot2)
+
+# Heat map of the correlation matrix
+ggplot(data = as.data.frame(as.table(cor_matrix)), aes(x = Var1, y = Var2, fill = Freq)) +
+  geom_tile() +
+  geom_text(aes(label = sprintf("%.2f", Freq)), vjust = 0.5) +
+  scale_fill_gradient(low = "blue", high = "red") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Correlation Heatmap", x = "Variables", y = "Variables")
+
+```
+
+
+### Using shapefiles to draw maps
+
+```{r}
+library(sf)
+```
+
+
+```{r}
+kenyan_counties_sf <- st_read("C:/Users/Use/Downloads/CEMA/County.shx")
+
+
+```
+
+```{r}
+# View the attributes of the shapefile
+print(kenyan_counties_sf)
+```
+
+
+```{r}
+kenyan_counties_sf <- st_read("C:/Users/Use/Downloads/CEMA/County.shp")
+
+```
+
+```{r}
+# Plot the map
+ggplot() +
+  geom_sf(data = kenyan_counties_sf, fill = "lightblue", color = "black") +
+  theme_minimal()
+```
+
+checking what is inside the shapefile
+```{r}
+# Load the sf package
+library(sf)
+
+shapefile_path <- "C:/Users/Use/Downloads/CEMA/County.shp"
+
+# Get information about the layers in the shapefile
+layers_info <- st_layers(shapefile_path)
+
+# Print the information about each layer
+print(layers_info)
+
+```
+We have one common column that is 'county'
+
+```{r}
+library(sf)
+
+# Read the other dataset containing the number of diarrhoea cases per county (kenyan_counties)
+# Replace "path/to/dataset/kenyan_counties.csv" with the actual path to your dataset file
+kenyan_counties <- read.csv("C:/Users/Use/Downloads/CEMA/cema_internship_task_2023.csv")
+
+# Convert the "county" column names to lowercase
+colnames(kenyan_counties_sf) <- tolower(colnames(kenyan_counties_sf))
+colnames(kenyan_counties) <- tolower(colnames(kenyan_counties))
+
+# Add row numbers as a new column to both datasets
+kenyan_counties_sf$row_num <- seq_len(nrow(kenyan_counties_sf))
+kenyan_counties$row_num <- seq_len(nrow(kenyan_counties))
+
+# Perform the merge based on the row numbers
+merged_data <- merge(kenyan_counties_sf, kenyan_counties, by = "row_num")
+
+# Remove the row number column from the merged data
+merged_data$row_num <- NULL
+
+# Print the merged dataset
+print(merged_data)
+
+```
+
+Create the map plot
+```{r}
+# Load required packages
+library(sf)
+library(ggplot2)
+
+
+# Create the map plot
+ggplot() +
+  # Add the geometry data from the merged dataset
+  geom_sf(data = merged_data, aes(fill = diarrhoea.cases)) +
+  # Specify the color scale for the fill (you can change the scale as per your preference)
+  scale_fill_viridis_c(name = "Diarrhoea Cases", option = "D", direction = -1) +
+  # Add a title to the map
+  labs(title = "Diarrhoea Cases Per County") +
+  # Add labels for x and y axes
+  xlab("Longitude") +
+  ylab("Latitude")
+
+```
+ 
+ Shows distribution of diarrhoea cases across counties.
+ 
+ 
+ GENERAL INSIGHTS
+ 
+**The distribution of "Total Dewormed" across different counties varies significantly, with some counties having much higher deworming rates than others.
+
+**There is a positive correlation between "Total Dewormed" and the prevalence of Acute Malnutrition, stunted children in different age groups, and diarrhea cases. However, there is no significant correlation with underweight children.
+
+**The number of dewormed children varies over time, with certain months or years showing higher deworming rates than others.
+
+**There are significant differences in "Total Dewormed" among different counties, indicating disparities in deworming programs across regions.
+
+**The correlation analysis suggests a relationship between different health indicators, such as Acute Malnutrition, stunted children, and diarrhea cases.
+
+RECOMMENDATIONS
+
+1.Focus on counties with low deworming rates and design targeted interventions to improve deworming coverage in these regions.
+
+2.Strengthen efforts to address Acute Malnutrition, stunted children, and diarrhea cases, as they are positively associated with deworming rates.
+
+3.Conduct further investigation to understand the reasons for variations in deworming rates across months and years, and tailor deworming campaigns accordingly.
+
+4.Implement strategies to address disparities in deworming programs among counties and ensure equitable access to deworming services for all children.
+
+CONCLUSIONS
+
+The analysis highlights the importance of deworming programs in Kenya and their association with various health indicators. It is evident that the deworming coverage varies significantly across counties and over time. Efforts should be made to improve deworming rates, especially in regions with lower coverage, to enhance child health and well-being.Addressing other health indicators such as Acute Malnutrition and stunted children will complement deworming efforts and contribute to better child health outcomes. Overall, a comprehensive and integrated approach to child health and deworming programs is crucial for improving the well-being of children in Kenya.
+
+
